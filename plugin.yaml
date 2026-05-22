@@ -1,0 +1,14 @@
+name: graphiti
+version: 1.0.0
+description: "Long-term memory provider powered by Graphiti + Neo4j. Stores conversation episodes as a temporal knowledge graph per group_id/agent."
+author: "Jhalmar"
+kind: exclusive
+requires_env:
+  - GRAPHITI_NEO4J_URI
+  - GRAPHITI_NEO4J_PASSWORD
+provides_tools:
+  - graphiti_search
+  - graphiti_add_fact
+  - graphiti_relate
+  - graphiti_recall
+  - graphiti_profile

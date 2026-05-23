@@ -41,6 +41,26 @@ from graphiti_core.nodes import EpisodeType
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
+# Config reader - reads Hermes config.yaml directly
+# ---------------------------------------------------------------------------
+def _read_hermes_config() -> Dict[str, Any]:
+    """Read memory config from ~/.hermes/config.yaml"""
+    config_paths = [
+        os.path.expanduser("~/.hermes/config.yaml"),
+        os.environ.get("HERMES_HOME", "") + "/config.yaml",
+    ]
+    for path in config_paths:
+        if path and os.path.exists(path):
+            try:
+                import yaml
+                with open(path, "r") as f:
+                    config = yaml.safe_load(f) or {}
+                    return config.get("memory", {})
+            except Exception as e:
+                logger.debug("Failed to read config.yaml at %s: %s", path, e)
+    return {}
+
+# ---------------------------------------------------------------------------
 # Defaults
 # ---------------------------------------------------------------------------
 _DEFAULT_NEO4J_URI = "bolt://localhost:7687"
@@ -304,25 +324,27 @@ class GraphitiMemoryProvider(MemoryProvider):
             self._cron_skipped = True
             return
 
-        # Resolve config from kwargs (Hermes config) or fallback to env vars
-        neo4j_uri = kwargs.get("neo4j_uri") or os.environ.get("GRAPHITI_NEO4J_URI", _DEFAULT_NEO4J_URI)
-        neo4j_api_key = kwargs.get("neo4j_api_key") or os.environ.get("GRAPHITI_NEO4J_API_KEY", "")
-        group_id = kwargs.get("group_id") or os.environ.get("GRAPHITI_GROUP_ID", "")
+        # Read config from Hermes config.yaml
+        hermes_config = _read_hermes_config()
+        logger.info("Graphiti: loaded config from Hermes: %s", list(hermes_config.keys()))
+        
+        # Resolve config from kwargs, then hermes_config, then env vars
+        neo4j_uri = kwargs.get("neo4j_uri") or hermes_config.get("neo4j_uri") or os.environ.get("GRAPHITI_NEO4J_URI", _DEFAULT_NEO4J_URI)
+        neo4j_api_key = kwargs.get("neo4j_api_key") or hermes_config.get("neo4j_api_key") or os.environ.get("GRAPHITI_NEO4J_API_KEY", "")
+        group_id = kwargs.get("group_id") or hermes_config.get("group_id") or os.environ.get("GRAPHITI_GROUP_ID", "")
 
-        llm_api_key = kwargs.get("llm_api_key") or os.environ.get("GRAPHITI_LLM_API_KEY", os.environ.get("OPENROUTER_API_KEY", ""))
-        llm_base_url = kwargs.get("llm_base_url") or os.environ.get("GRAPHITI_LLM_BASE_URL", _DEFAULT_LLM_BASE_URL)
-        llm_model = kwargs.get("llm_model") or os.environ.get("GRAPHITI_LLM_MODEL", _DEFAULT_LLM_MODEL)
+        llm_api_key = kwargs.get("llm_api_key") or hermes_config.get("llm_api_key") or os.environ.get("GRAPHITI_LLM_API_KEY", os.environ.get("OPENROUTER_API_KEY", ""))
+        llm_base_url = kwargs.get("llm_base_url") or hermes_config.get("llm_base_url") or os.environ.get("GRAPHITI_LLM_BASE_URL", _DEFAULT_LLM_BASE_URL)
+        llm_model = kwargs.get("llm_model") or hermes_config.get("llm_model") or os.environ.get("GRAPHITI_LLM_MODEL", _DEFAULT_LLM_MODEL)
 
-        embed_api_key = kwargs.get("embed_api_key") or os.environ.get(
+        embed_api_key = kwargs.get("embed_api_key") or hermes_config.get("embed_api_key") or os.environ.get(
             "GRAPHITI_EMBED_API_KEY",
             os.environ.get("OPENAI_API_KEY", llm_api_key),
         )
-        embed_base_url = kwargs.get("embed_base_url") or os.environ.get("GRAPHITI_EMBED_BASE_URL", _DEFAULT_EMBED_BASE_URL)
-        embed_model = kwargs.get("embed_model") or os.environ.get("GRAPHITI_EMBED_MODEL", _DEFAULT_EMBED_MODEL)
+        embed_base_url = kwargs.get("embed_base_url") or hermes_config.get("embed_base_url") or os.environ.get("GRAPHITI_EMBED_BASE_URL", _DEFAULT_EMBED_BASE_URL)
+        embed_model = kwargs.get("embed_model") or hermes_config.get("embed_model") or os.environ.get("GRAPHITI_EMBED_MODEL", _DEFAULT_EMBED_MODEL)
 
-        if not neo4j_api_key:
-            logger.warning("Graphiti: NEO4J_API_KEY not set — cannot initialize")
-            return
+        logger.info("Graphiti: neo4j_uri=%s, group_id=%s, api_key_set=%s", neo4j_uri, group_id, bool(neo4j_api_key))
 
         # group_id scoping — one graph per agent profile or user
         self._group_id = group_id or kwargs.get("agent_identity") or kwargs.get("user_id") or session_id or "default"

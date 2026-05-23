@@ -258,6 +258,12 @@ class GraphitiMemoryProvider(MemoryProvider):
                 "env_var": "GRAPHITI_NEO4J_API_KEY",
             },
             {
+                "key": "group_id",
+                "description": "Group ID to scope the graph (default: auto-generated)",
+                "default": "default",
+                "env_var": "GRAPHITI_GROUP_ID",
+            },
+            {
                 "key": "llm_api_key",
                 "description": "API key for the LLM endpoint (OpenRouter / OpenAI)",
                 "secret": True,
@@ -303,27 +309,28 @@ class GraphitiMemoryProvider(MemoryProvider):
             self._cron_skipped = True
             return
 
-        # Resolve config
-        neo4j_uri = os.environ.get("GRAPHITI_NEO4J_URI", _DEFAULT_NEO4J_URI)
-        neo4j_api_key = os.environ.get("GRAPHITI_NEO4J_API_KEY", "")
+        # Resolve config from kwargs (Hermes config) or fallback to env vars
+        neo4j_uri = kwargs.get("neo4j_uri") or os.environ.get("GRAPHITI_NEO4J_URI", _DEFAULT_NEO4J_URI)
+        neo4j_api_key = kwargs.get("neo4j_api_key") or os.environ.get("GRAPHITI_NEO4J_API_KEY", "")
+        group_id = kwargs.get("group_id") or os.environ.get("GRAPHITI_GROUP_ID", "")
 
-        llm_api_key = os.environ.get("GRAPHITI_LLM_API_KEY", os.environ.get("OPENROUTER_API_KEY", ""))
-        llm_base_url = os.environ.get("GRAPHITI_LLM_BASE_URL", _DEFAULT_LLM_BASE_URL)
-        llm_model = os.environ.get("GRAPHITI_LLM_MODEL", _DEFAULT_LLM_MODEL)
+        llm_api_key = kwargs.get("llm_api_key") or os.environ.get("GRAPHITI_LLM_API_KEY", os.environ.get("OPENROUTER_API_KEY", ""))
+        llm_base_url = kwargs.get("llm_base_url") or os.environ.get("GRAPHITI_LLM_BASE_URL", _DEFAULT_LLM_BASE_URL)
+        llm_model = kwargs.get("llm_model") or os.environ.get("GRAPHITI_LLM_MODEL", _DEFAULT_LLM_MODEL)
 
-        embed_api_key = os.environ.get(
+        embed_api_key = kwargs.get("embed_api_key") or os.environ.get(
             "GRAPHITI_EMBED_API_KEY",
             os.environ.get("OPENAI_API_KEY", llm_api_key),
         )
-        embed_base_url = os.environ.get("GRAPHITI_EMBED_BASE_URL", _DEFAULT_EMBED_BASE_URL)
-        embed_model = os.environ.get("GRAPHITI_EMBED_MODEL", _DEFAULT_EMBED_MODEL)
+        embed_base_url = kwargs.get("embed_base_url") or os.environ.get("GRAPHITI_EMBED_BASE_URL", _DEFAULT_EMBED_BASE_URL)
+        embed_model = kwargs.get("embed_model") or os.environ.get("GRAPHITI_EMBED_MODEL", _DEFAULT_EMBED_MODEL)
 
         if not neo4j_api_key:
             logger.warning("Graphiti: NEO4J_API_KEY not set — cannot initialize")
             return
 
         # group_id scoping — one graph per agent profile or user
-        self._group_id = os.environ.get("GRAPHITI_GROUP_ID") or kwargs.get("agent_identity") or kwargs.get("user_id") or session_id or "default"
+        self._group_id = group_id or kwargs.get("agent_identity") or kwargs.get("user_id") or session_id or "default"
         self._session_id = session_id
         logger.info("Graphiti: using group_id=%s", self._group_id)
 

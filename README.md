@@ -23,67 +23,12 @@ Long-term memory provider for [Hermes AI Agent](https://github.com/NousResearch/
 
 ---
 
- 
----
- 
-## Requisitos y Dependencias Clave
- 
-- Hermes Agent >= 0.14 (Recomendado)
-- Neo4j Community o Enterprise (Versión 5.x es ideal)
+## Requisitos
+
+- Hermes Agent >= 0.14
+- Neo4j 5.x (Community o Enterprise)
 - Python >= 3.11
-- `graphiti-core` (Se instala vía pip/uv)
-- **Conexión de Red:** El servidor Graphiti y Neo4j deben ser accesibles desde donde se ejecute Hermes Agent.
- 
----
- 
-## Configuración del Entorno Local: Variables de Entorno
- 
-Para que el plugin funcione, necesitas definir al menos la contraseña de Neo4j y las credenciales de LLM/Embeddings. Los entornos más comunes son:
- 
-### 🔑 Caso A: Usando OpenRouter (Recomendado)
-*   **LLM Key:** `GRAPHITI_LLM_API_KEY="sk-..."` (Clave de OpenRouter)
-*   **LLM Base URL:** `GRAPHITI_LLM_BASE_URL="https://openrouter.ai/api/v1"`
-*   **Embedding Key:** Usar la misma clave: `GRAPHITI_EMBED_API_KEY=$GRAPHITI_LLM_API_KEY`
- 
-### 🔑 Caso B: Usando OpenAI (Alternativa)
-*   **LLM Key:** `GRAPHITI_LLM_API_KEY="sk-..."` (Clave de OpenAI)
-*   **Embedding Key:** `GRAPHITI_EMBED_API_KEY="sk-..."` (Clave de OpenAI)
- 
-### ✨ Variables Globales Esenciales (Siempre necesarias)
- 
-| Variable | Descripción | Ejemplo de Valor | Requerida |
-| :--- | :--- | :--- | :--- |
-| `GRAPHITI_NEO4J_PASSWORD` | **Contraseña de Neo4j.** Sin default. | `hermes-graphiti-local-2026` | ✅ Sí |
-| `GRAPHITI_NEO4J_URI` | URI de conexión a la base de datos Bolt. | `bolt://localhost:7687` | 🟡 No (Default) |
-| `GRAPHITI_LLM_API_KEY` | API key para el LLM/Extracción de entidades. | `sk-openrouter/...` | ✅ Sí |
-| `GRAPHITI_EMBED_API_KEY` | API key para los embeddings. | `sk-openai/...` | ✅ Sí |
-
----
- 
-## Verificación y Depuración en Neo4j (Cypher)
- 
-Una vez que el plugin está activo, puedes verificar la actividad de memoria directamente en Cypher Shell de Neo4j. Esto confirma si las herramientas están funcionando correctamente:
- 
-### 🔍 Buscar Nodos y Relaciones Generales
-```cypher
-MATCH (a)-[r]-(b)
-RETURN a, r, b LIMIT 10;
-```
- 
-### 🔄 Ver el Grafo de un Usuario Específico (`group_id`)
-Para ver solo la memoria del agente `donna`:
-```cypher
-MATCH p=(a:Agent {group_id: 'donna'})-[r]-(b)
-RETURN nodes(p), relationships(p) LIMIT 50;
-```
-
-### 📅 Revisar Hechos Expirados (Temporalidad)
-Este comando muestra cómo se gestionan los cambios de estado a lo largo del tiempo para un agente específico.
-```cypher
-MATCH (u:User {group_id: 'donna'})-[r:works_at]-(e:Entity)
-WHERE r.expired_at IS NOT NULL AND r.expired_at < date() 
-RETURN u, e, r;
-```
+- `graphiti-core` (se instala vía pip/uv)
 
 ---
 
@@ -93,7 +38,7 @@ RETURN u, e, r;
 
 ```bash
 cd ~/.hermes/plugins  # o $HERMES_HOME/plugins
-git clone https://github.com/Jhalmarm/hermes-plugins-graphiti-neo4j.git graphiti
+git clone https://github.com/Jhalmarm/hermes-plugins-graphiti-neo4j.git graphiti-neo4j
 ```
 
 ### 2. Instalar dependencias
@@ -123,34 +68,27 @@ O usa el `docker-compose.yml` incluido:
 docker compose up -d neo4j
 ```
 
-### 4. Configurar variables de entorno
+### 4. Configurar en el archivo de configuración de Hermes
 
-```bash
-# Neo4j
-export GRAPHITI_NEO4J_URI=bolt://localhost:7687
-export GRAPHITI_NEO4J_API_KEY=hermes-graphiti-local-2026
-
-# LLM para extracción de entidades (OpenRouter por defecto)
-export GRAPHITI_LLM_API_KEY=$OPENROUTER_API_KEY
-export GRAPHITI_LLM_BASE_URL=https://openrouter.ai/api/v1
-export GRAPHITI_LLM_MODEL=deepseek/deepseek-v4-flash
-
-# Embeddings (OpenAI por defecto)
-export GRAPHITI_EMBED_API_KEY=$OPENAI_API_KEY
-export GRAPHITI_EMBED_BASE_URL=https://api.openai.com/v1
-export GRAPHITI_EMBED_MODEL=text-embedding-3-small
-```
-
-### 5. Activar en Hermes
-
-Edita `$HERMES_HOME/config.yaml`:
+Edita `~/.hermes/config.yaml` y configura el provider y los parámetros del plugin:
 
 ```yaml
 memory:
-  provider: graphiti   # <- cambiar de honcho/builtin a graphiti
+  provider: graphiti
+  neo4j_uri: "bolt://10.101.10.18:7687"
+  neo4j_api_key: "8f5a3c2e1b7d90f4a6e2b8c3d1f5e7a9b0c2d4e6f8a0b1c3d5e7f9a1b3c5d7e9"
+  group_id: "hermes_test"
+  llm_api_key: "${OPENROUTER_API_KEY}"
+  llm_base_url: "https://openrouter.ai/api/v1"
+  llm_model: "deepseek/deepseek-v4-flash"
+  embed_api_key: "${OPENAI_API_KEY}"
+  embed_base_url: "https://api.openai.com/v1"
+  embed_model: "text-embedding-3-small"
 ```
 
-### 6. Reiniciar Hermes
+**Nota:** También puedes usar variables de entorno como respaldo (ej: `${OPENROUTER_API_KEY}`), pero la configuración prioritaria es desde el archivo `config.yaml`.
+
+### 5. Reiniciar Hermes
 
 ```bash
 docker compose restart gateway dashboard
@@ -160,18 +98,37 @@ hermes gateway run
 
 ---
 
-## Variables de entorno
+## Parámetros de configuración
 
-| Variable | Descripción | Default |
-|----------|-------------|---------|
-| `GRAPHITI_NEO4J_URI` | URI de Neo4j | `bolt://localhost:7687` |
-| `GRAPHITI_NEO4J_API_KEY` | **Requerido** — API key de Neo4j | — |
-| `GRAPHITI_LLM_API_KEY` | API key para LLM (OpenRouter, OpenAI, etc.) | `$OPENROUTER_API_KEY` |
-| `GRAPHITI_LLM_BASE_URL` | Base URL del LLM | `https://openrouter.ai/api/v1` |
-| `GRAPHITI_LLM_MODEL` | Modelo para extracción de entidades | `deepseek/deepseek-v4-flash` |
-| `GRAPHITI_EMBED_API_KEY` | API key para embeddings | `$OPENAI_API_KEY` o `$GRAPHITI_LLM_API_KEY` |
-| `GRAPHITI_EMBED_BASE_URL` | Base URL del servicio de embeddings | `https://api.openai.com/v1` |
-| `GRAPHITI_EMBED_MODEL` | Modelo de embeddings | `text-embedding-3-small` |
+| Parámetro | Descripción | Default |
+|-----------|-------------|---------|
+| `neo4j_uri` | URI de conexión a Neo4j | `bolt://localhost:7687` |
+| `neo4j_api_key` | **Requerido** — API key de Neo4j | — |
+| `group_id` | Identificador del grafo (para aislar datos) | `default` |
+| `llm_api_key` | API key para LLM (OpenRouter, OpenAI, etc.) | `$OPENROUTER_API_KEY` |
+| `llm_base_url` | Base URL del LLM | `https://openrouter.ai/api/v1` |
+| `llm_model` | Modelo para extracción de entidades | `deepseek/deepseek-v4-flash` |
+| `embed_api_key` | API key para embeddings | `$OPENAI_API_KEY` |
+| `embed_base_url` | Base URL del servicio de embeddings | `https://api.openai.com/v1` |
+| `embed_model` | Modelo de embeddings | `text-embedding-3-small` |
+
+---
+
+## Variables de entorno (respaldos)
+
+Aunque la configuración principal se hace en `config.yaml`, el plugin lee estas variables de entorno como respaldo:
+
+| Variable | Descripción |
+|----------|-------------|
+| `GRAPHITI_NEO4J_URI` | URI de Neo4j |
+| `GRAPHITI_NEO4J_API_KEY` | API key de Neo4j |
+| `GRAPHITI_GROUP_ID` | Group ID para el grafo |
+| `GRAPHITI_LLM_API_KEY` | API key para LLM |
+| `GRAPHITI_LLM_BASE_URL` | Base URL del LLM |
+| `GRAPHITI_LLM_MODEL` | Modelo LLM |
+| `GRAPHITI_EMBED_API_KEY` | API key para embeddings |
+| `GRAPHITI_EMBED_BASE_URL` | Base URL de embeddings |
+| `GRAPHITI_EMBED_MODEL` | Modelo de embeddings |
 
 ---
 
@@ -214,14 +171,22 @@ Cada perfil/agente de Hermes usa su propio `group_id`, así que **múltiples age
 |--------|-----------|-------|
 | `donna` (técnica-ejecutiva) | `donna` | Aislado |
 | `coder` (programador) | `coder` | Aislado |
+| `hermes_test` (pruebas) | `hermes_test` | Aislado |
 | Subagente cron | *skip* | No escribe (protección cron) |
+
+Configura el `group_id` en `config.yaml`:
+```yaml
+memory:
+  provider: graphiti
+  group_id: "hermes_test"
+```
 
 ---
 
 ## Estructura del plugin
 
 ```
-graphiti/
+graphiti-neo4j/
 ├── plugin.yaml      # Manifest del plugin
 └── __init__.py      # GraphitiMemoryProvider
 ```
@@ -236,16 +201,21 @@ Solo 2 archivos. Sin dependencias externas más allá de `graphiti-core` y `neo4
 ```bash
 docker logs neo4j-graphiti
 # Verificar que el puerto 7687 esté abierto
-nc -zv localhost 7687
+nc -zv 10.101.10.18 7687
 ```
 
 **Error "api_key client option must be set":**
-- Faltan variables `GRAPHITI_LLM_API_KEY` o `GRAPHITI_EMBED_API_KEY`
-- OpenAI requiere key propia para embeddings. Si usas OpenRouter, configura `GRAPHITI_EMBED_BASE_URL` a un endpoint compatible.
+- Faltan parámetros en `config.yaml`
+- Verifica que `neo4j_api_key`, `llm_api_key` y `embed_api_key` estén configurados
 
 **El plugin no aparece en `hermes plugins list`:**
-- Verificar que esté en `$HERMES_HOME/plugins/graphiti/`
+- Verificar que esté en `$HERMES_HOME/plugins/graphiti-neo4j/`
 - Verificar que `__init__.py` tenga la función `register(ctx)`
+
+**Error de conexión a Neo4j:**
+- Verifica la URI en `config.yaml` (ej: `bolt://10.101.10.18:7687`)
+- Asegúrate de que el puerto 7687 esté abierto en el servidor
+- Si usas TLS/Aura, usa `neo4j+s://` en lugar de `bolt://`
 
 ---
 

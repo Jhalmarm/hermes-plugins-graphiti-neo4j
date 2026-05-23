@@ -5,7 +5,7 @@ author: "Jhalmar"
 kind: exclusive
 requires_env:
   - GRAPHITI_NEO4J_URI
-  - GRAPHITI_NEO4J_PASSWORD
+  - GRAPHITI_NEO4J_API_KEY
 provides_tools:
   - graphiti_search
   - graphiti_add_fact

@@ -128,8 +128,7 @@ docker compose up -d neo4j
 ```bash
 # Neo4j
 export GRAPHITI_NEO4J_URI=bolt://localhost:7687
-export GRAPHITI_NEO4J_USER=neo4j
-export GRAPHITI_NEO4J_PASSWORD=hermes-graphiti-local-2026
+export GRAPHITI_NEO4J_API_KEY=hermes-graphiti-local-2026
 
 # LLM para extracción de entidades (OpenRouter por defecto)
 export GRAPHITI_LLM_API_KEY=$OPENROUTER_API_KEY
@@ -166,8 +165,7 @@ hermes gateway run
 | Variable | Descripción | Default |
 |----------|-------------|---------|
 | `GRAPHITI_NEO4J_URI` | URI de Neo4j | `bolt://localhost:7687` |
-| `GRAPHITI_NEO4J_USER` | Usuario Neo4j | `neo4j` |
-| `GRAPHITI_NEO4J_PASSWORD` | **Requerido** — sin default | — |
+| `GRAPHITI_NEO4J_API_KEY` | **Requerido** — API key de Neo4j | — |
 | `GRAPHITI_LLM_API_KEY` | API key para LLM (OpenRouter, OpenAI, etc.) | `$OPENROUTER_API_KEY` |
 | `GRAPHITI_LLM_BASE_URL` | Base URL del LLM | `https://openrouter.ai/api/v1` |
 | `GRAPHITI_LLM_MODEL` | Modelo para extracción de entidades | `deepseek/deepseek-v4-flash` |

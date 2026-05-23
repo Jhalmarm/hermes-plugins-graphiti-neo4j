@@ -12,8 +12,7 @@ Requires:
 
 Env vars (all optional, fallbacks shown):
   GRAPHITI_NEO4J_URI          default: bolt://localhost:7687
-  GRAPHITI_NEO4J_USER         default: neo4j
-  GRAPHITI_NEO4J_PASSWORD     required — no default
+  GRAPHITI_NEO4J_API_KEY      required — no default
   GRAPHITI_LLM_API_KEY        default: $OPENROUTER_API_KEY
   GRAPHITI_LLM_BASE_URL       default: https://openrouter.ai/api/v1
   GRAPHITI_LLM_MODEL          default: deepseek/deepseek-v4-flash
@@ -45,7 +44,6 @@ logger = logging.getLogger(__name__)
 # Defaults
 # ---------------------------------------------------------------------------
 _DEFAULT_NEO4J_URI = "bolt://localhost:7687"
-_DEFAULT_NEO4J_USER = "neo4j"
 
 _DEFAULT_LLM_BASE_URL = "https://openrouter.ai/api/v1"
 _DEFAULT_LLM_MODEL = "deepseek/deepseek-v4-flash"
@@ -231,16 +229,16 @@ class GraphitiMemoryProvider(MemoryProvider):
         return "graphiti"
 
     def is_available(self) -> bool:
-        """Return True when graphiti-core is importable and Neo4j creds are present."""
+        """Return True when graphiti-core is importable and Neo4j API key is present."""
         try:
             import graphiti_core  # noqa: F401
         except Exception:
             logger.debug("graphiti-core is not installed")
             return False
 
-        pwd = os.environ.get("GRAPHITI_NEO4J_PASSWORD", "")
-        if not pwd:
-            logger.debug("GRAPHITI_NEO4J_PASSWORD not set — graphiti unavailable")
+        api_key = os.environ.get("GRAPHITI_NEO4J_API_KEY", "")
+        if not api_key:
+            logger.debug("GRAPHITI_NEO4J_API_KEY not set — graphiti unavailable")
             return False
         return True
 
@@ -253,17 +251,11 @@ class GraphitiMemoryProvider(MemoryProvider):
                 "env_var": "GRAPHITI_NEO4J_URI",
             },
             {
-                "key": "neo4j_user",
-                "description": "Neo4j username",
-                "default": _DEFAULT_NEO4J_USER,
-                "env_var": "GRAPHITI_NEO4J_USER",
-            },
-            {
-                "key": "neo4j_password",
-                "description": "Neo4j password",
+                "key": "neo4j_api_key",
+                "description": "Neo4j API key",
                 "secret": True,
                 "required": True,
-                "env_var": "GRAPHITI_NEO4J_PASSWORD",
+                "env_var": "GRAPHITI_NEO4J_API_KEY",
             },
             {
                 "key": "llm_api_key",
@@ -313,8 +305,7 @@ class GraphitiMemoryProvider(MemoryProvider):
 
         # Resolve config
         neo4j_uri = os.environ.get("GRAPHITI_NEO4J_URI", _DEFAULT_NEO4J_URI)
-        neo4j_user = os.environ.get("GRAPHITI_NEO4J_USER", _DEFAULT_NEO4J_USER)
-        neo4j_password = os.environ.get("GRAPHITI_NEO4J_PASSWORD", "")
+        neo4j_api_key = os.environ.get("GRAPHITI_NEO4J_API_KEY", "")
 
         llm_api_key = os.environ.get("GRAPHITI_LLM_API_KEY", os.environ.get("OPENROUTER_API_KEY", ""))
         llm_base_url = os.environ.get("GRAPHITI_LLM_BASE_URL", _DEFAULT_LLM_BASE_URL)
@@ -327,8 +318,8 @@ class GraphitiMemoryProvider(MemoryProvider):
         embed_base_url = os.environ.get("GRAPHITI_EMBED_BASE_URL", _DEFAULT_EMBED_BASE_URL)
         embed_model = os.environ.get("GRAPHITI_EMBED_MODEL", _DEFAULT_EMBED_MODEL)
 
-        if not neo4j_password:
-            logger.warning("Graphiti: NEO4J_PASSWORD not set — cannot initialize")
+        if not neo4j_api_key:
+            logger.warning("Graphiti: NEO4J_API_KEY not set — cannot initialize")
             return
 
         # group_id scoping — one graph per agent profile or user
@@ -368,8 +359,8 @@ class GraphitiMemoryProvider(MemoryProvider):
             from graphiti_core import Graphiti
             self._graphiti = Graphiti(
                 uri=neo4j_uri,
-                user=neo4j_user,
-                password=neo4j_password,
+                user="neo4j",
+                password=neo4j_api_key,
                 llm_client=llm_client,
                 embedder=embedder,
                 cross_encoder=cross_encoder,

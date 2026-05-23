@@ -88,7 +88,8 @@ Edita `~/.hermes/config.yaml` y configura el provider y los parámetros del plug
 memory:
   provider: graphiti
   neo4j_uri: "bolt://10.101.10.18:7687"
-  neo4j_api_key: "8f5a3c2e1b7d90f4a6e2b8c3d1f5e7a9b0c2d4e6f8a0b1c3d5e7f9a1b3c5d7e9"
+  neo4j_user: "neo4j"
+  neo4j_password: "hermes-graphiti-local-2026"
   group_id: "hermes_test"
   llm_api_key: "${OPENROUTER_API_KEY}"
   llm_base_url: "https://openrouter.ai/api/v1"
@@ -115,7 +116,8 @@ hermes gateway run
 | Parámetro | Descripción | Default |
 |-----------|-------------|---------|
 | `neo4j_uri` | URI de conexión a Neo4j | `bolt://localhost:7687` |
-| `neo4j_api_key` | **Requerido** — API key de Neo4j | — |
+| `neo4j_user` | Usuario de Neo4j | `neo4j` |
+| `neo4j_password` | **Requerido** — Contraseña de Neo4j | — |
 | `group_id` | Identificador del grafo (para aislar datos) | `default` |
 | `llm_api_key` | API key para LLM (OpenRouter, OpenAI, etc.) | `$OPENROUTER_API_KEY` |
 | `llm_base_url` | Base URL del LLM | `https://openrouter.ai/api/v1` |
@@ -133,7 +135,8 @@ Aunque la configuración principal se hace en `config.yaml`, el plugin lee estas
 | Variable | Descripción |
 |----------|-------------|
 | `GRAPHITI_NEO4J_URI` | URI de Neo4j |
-| `GRAPHITI_NEO4J_API_KEY` | API key de Neo4j |
+| `GRAPHITI_NEO4J_USER` | Usuario de Neo4j |
+| `GRAPHITI_NEO4J_PASSWORD` | Contraseña de Neo4j |
 | `GRAPHITI_GROUP_ID` | Group ID para el grafo |
 | `GRAPHITI_LLM_API_KEY` | API key para LLM |
 | `GRAPHITI_LLM_BASE_URL` | Base URL del LLM |

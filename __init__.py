@@ -266,11 +266,17 @@ class GraphitiMemoryProvider(MemoryProvider):
                 "env_var": "GRAPHITI_NEO4J_URI",
             },
             {
-                "key": "neo4j_api_key",
-                "description": "Neo4j API key",
+                "key": "neo4j_user",
+                "description": "Neo4j username",
+                "default": "neo4j",
+                "env_var": "GRAPHITI_NEO4J_USER",
+            },
+            {
+                "key": "neo4j_password",
+                "description": "Neo4j password",
                 "secret": True,
                 "required": True,
-                "env_var": "GRAPHITI_NEO4J_API_KEY",
+                "env_var": "GRAPHITI_NEO4J_PASSWORD",
             },
             {
                 "key": "group_id",
@@ -330,7 +336,8 @@ class GraphitiMemoryProvider(MemoryProvider):
         
         # Resolve config from kwargs, then hermes_config, then env vars
         neo4j_uri = kwargs.get("neo4j_uri") or hermes_config.get("neo4j_uri") or os.environ.get("GRAPHITI_NEO4J_URI", _DEFAULT_NEO4J_URI)
-        neo4j_api_key = kwargs.get("neo4j_api_key") or hermes_config.get("neo4j_api_key") or os.environ.get("GRAPHITI_NEO4J_API_KEY", "")
+        neo4j_user = kwargs.get("neo4j_user") or hermes_config.get("neo4j_user") or os.environ.get("GRAPHITI_NEO4J_USER", _DEFAULT_NEO4J_USER)
+        neo4j_password = kwargs.get("neo4j_password") or hermes_config.get("neo4j_password") or os.environ.get("GRAPHITI_NEO4J_PASSWORD", "")
         group_id = kwargs.get("group_id") or hermes_config.get("group_id") or os.environ.get("GRAPHITI_GROUP_ID", "")
 
         llm_api_key = kwargs.get("llm_api_key") or hermes_config.get("llm_api_key") or os.environ.get("GRAPHITI_LLM_API_KEY", os.environ.get("OPENROUTER_API_KEY", ""))
@@ -344,7 +351,12 @@ class GraphitiMemoryProvider(MemoryProvider):
         embed_base_url = kwargs.get("embed_base_url") or hermes_config.get("embed_base_url") or os.environ.get("GRAPHITI_EMBED_BASE_URL", _DEFAULT_EMBED_BASE_URL)
         embed_model = kwargs.get("embed_model") or hermes_config.get("embed_model") or os.environ.get("GRAPHITI_EMBED_MODEL", _DEFAULT_EMBED_MODEL)
 
-        logger.info("Graphiti: neo4j_uri=%s, group_id=%s, api_key_set=%s", neo4j_uri, group_id, bool(neo4j_api_key))
+        logger.info("Graphiti: neo4j_uri=%s, user=%s, group_id=%s, password_set=%s", 
+                    neo4j_uri, neo4j_user, group_id, bool(neo4j_password))
+        
+        if not neo4j_password:
+            logger.warning("Graphiti: NEO4J_PASSWORD not set — cannot initialize")
+            return
 
         # group_id scoping — one graph per agent profile or user
         self._group_id = group_id or kwargs.get("agent_identity") or kwargs.get("user_id") or session_id or "default"
@@ -383,8 +395,8 @@ class GraphitiMemoryProvider(MemoryProvider):
             from graphiti_core import Graphiti
             self._graphiti = Graphiti(
                 uri=neo4j_uri,
-                user="neo4j",
-                password=neo4j_api_key,
+                user=neo4j_user,
+                password=neo4j_password,
                 llm_client=llm_client,
                 embedder=embedder,
                 cross_encoder=cross_encoder,

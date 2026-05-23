@@ -23,12 +23,67 @@ Long-term memory provider for [Hermes AI Agent](https://github.com/NousResearch/
 
 ---
 
-## Requisitos
-
-- Hermes Agent >= 0.14
-- Neo4j 5.x (Community o Enterprise)
+ 
+---
+ 
+## Requisitos y Dependencias Clave
+ 
+- Hermes Agent >= 0.14 (Recomendado)
+- Neo4j Community o Enterprise (Versión 5.x es ideal)
 - Python >= 3.11
-- `graphiti-core` (se instala vía pip/uv)
+- `graphiti-core` (Se instala vía pip/uv)
+- **Conexión de Red:** El servidor Graphiti y Neo4j deben ser accesibles desde donde se ejecute Hermes Agent.
+ 
+---
+ 
+## Configuración del Entorno Local: Variables de Entorno
+ 
+Para que el plugin funcione, necesitas definir al menos la contraseña de Neo4j y las credenciales de LLM/Embeddings. Los entornos más comunes son:
+ 
+### 🔑 Caso A: Usando OpenRouter (Recomendado)
+*   **LLM Key:** `GRAPHITI_LLM_API_KEY="sk-..."` (Clave de OpenRouter)
+*   **LLM Base URL:** `GRAPHITI_LLM_BASE_URL="https://openrouter.ai/api/v1"`
+*   **Embedding Key:** Usar la misma clave: `GRAPHITI_EMBED_API_KEY=$GRAPHITI_LLM_API_KEY`
+ 
+### 🔑 Caso B: Usando OpenAI (Alternativa)
+*   **LLM Key:** `GRAPHITI_LLM_API_KEY="sk-..."` (Clave de OpenAI)
+*   **Embedding Key:** `GRAPHITI_EMBED_API_KEY="sk-..."` (Clave de OpenAI)
+ 
+### ✨ Variables Globales Esenciales (Siempre necesarias)
+ 
+| Variable | Descripción | Ejemplo de Valor | Requerida |
+| :--- | :--- | :--- | :--- |
+| `GRAPHITI_NEO4J_PASSWORD` | **Contraseña de Neo4j.** Sin default. | `hermes-graphiti-local-2026` | ✅ Sí |
+| `GRAPHITI_NEO4J_URI` | URI de conexión a la base de datos Bolt. | `bolt://localhost:7687` | 🟡 No (Default) |
+| `GRAPHITI_LLM_API_KEY` | API key para el LLM/Extracción de entidades. | `sk-openrouter/...` | ✅ Sí |
+| `GRAPHITI_EMBED_API_KEY` | API key para los embeddings. | `sk-openai/...` | ✅ Sí |
+
+---
+ 
+## Verificación y Depuración en Neo4j (Cypher)
+ 
+Una vez que el plugin está activo, puedes verificar la actividad de memoria directamente en Cypher Shell de Neo4j. Esto confirma si las herramientas están funcionando correctamente:
+ 
+### 🔍 Buscar Nodos y Relaciones Generales
+```cypher
+MATCH (a)-[r]-(b)
+RETURN a, r, b LIMIT 10;
+```
+ 
+### 🔄 Ver el Grafo de un Usuario Específico (`group_id`)
+Para ver solo la memoria del agente `donna`:
+```cypher
+MATCH p=(a:Agent {group_id: 'donna'})-[r]-(b)
+RETURN nodes(p), relationships(p) LIMIT 50;
+```
+
+### 📅 Revisar Hechos Expirados (Temporalidad)
+Este comando muestra cómo se gestionan los cambios de estado a lo largo del tiempo para un agente específico.
+```cypher
+MATCH (u:User {group_id: 'donna'})-[r:works_at]-(e:Entity)
+WHERE r.expired_at IS NOT NULL AND r.expired_at < date() 
+RETURN u, e, r;
+```
 
 ---
 

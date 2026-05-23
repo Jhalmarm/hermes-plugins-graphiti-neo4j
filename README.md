@@ -29,6 +29,7 @@ Long-term memory provider for [Hermes AI Agent](https://github.com/NousResearch/
 - Neo4j 5.x (Community o Enterprise)
 - Python >= 3.11
 - **graphiti-core** (dependencia de Python requerida)
+- **pyyaml** (para leer configuración)
 
 **IMPORTANTE:** Después de clonar el plugin, debes instalar las dependencias en el entorno de Hermes:
 
@@ -39,7 +40,7 @@ pip install -r requirements.txt
 
 Si no usas requirements.txt, instala manualmente:
 ```bash
-pip install graphiti-core
+pip install graphiti-core pyyaml
 ```
 
 ---
@@ -50,18 +51,18 @@ pip install graphiti-core
 
 ```bash
 cd ~/.hermes/plugins  # o $HERMES_HOME/plugins
-git clone https://github.com/Jhalmarm/hermes-plugins-graphiti-neo4j.git graphiti-neo4j
+git clone https://github.com/Jhalmarm/hermes-plugins-graphiti-neo4j.git graphiti
 ```
 
 ### 2. Instalar dependencias
 
 ```bash
-pip install graphiti-core
+pip install graphiti-core pyyaml
 ```
 
 **Si usas el contenedor Docker de Hermes:**
 ```bash
-docker exec hermes-jhalmar /usr/local/bin/uv pip install graphiti-core
+docker exec hermes-jhalmar /usr/local/bin/uv pip install graphiti-core pyyaml
 ```
 
 ### 3. Iniciar Neo4j
@@ -71,7 +72,7 @@ docker exec hermes-jhalmar /usr/local/bin/uv pip install graphiti-core
 docker run -d \
   --name neo4j-graphiti \
   -p 7474:7474 -p 7687:7687 \
-  -e NEO4J_AUTH=neo4j/hermes-graphiti-local-2026 \
+  -e NEO4J_AUTH=neo4j/graphiti123 \
   neo4j:5-community
 ```
 
@@ -87,26 +88,40 @@ Edita `~/.hermes/config.yaml` y configura el provider y los parámetros del plug
 ```yaml
 memory:
   provider: graphiti
-  neo4j_uri: "bolt://10.101.10.18:7687"
+  neo4j_uri: "bolt://TU_SERVIDOR:7687"
   neo4j_user: "neo4j"
-  neo4j_password: "hermes-graphiti-local-2026"
+  neo4j_password: "TU_CONTRASEÑA"
   group_id: "hermes_test"
-  llm_api_key: "${OPENROUTER_API_KEY}"
+  llm_api_key: "sk-or-v1-TU_API_KEY"  # O tu API key de OpenAI
   llm_base_url: "https://openrouter.ai/api/v1"
   llm_model: "deepseek/deepseek-v4-flash"
-  embed_api_key: "${OPENAI_API_KEY}"
+  embed_api_key: "sk-or-v1-TU_API_KEY"
   embed_base_url: "https://api.openai.com/v1"
   embed_model: "text-embedding-3-small"
 ```
 
-**Nota:** También puedes usar variables de entorno como respaldo (ej: `${OPENROUTER_API_KEY}`), pero la configuración prioritaria es desde el archivo `config.yaml`.
+**Ejemplo con LM Studio local:**
+```yaml
+memory:
+  provider: graphiti
+  neo4j_uri: "bolt://localhost:7687"
+  neo4j_user: "neo4j"
+  neo4j_password: "tu_password"
+  group_id: "hermes_test"
+  llm_api_key: ""  # LM Studio no requiere API key
+  llm_base_url: "http://localhost:1234/v1"
+  llm_model: "lmstudio-community/Meta-Llama-3.1-8B-Instruct-GGUF"
+  embed_api_key: ""
+  embed_base_url: "http://localhost:1234/v1"
+  embed_model: "lmstudio-community/Meta-Llama-3.1-8B-Instruct-GGUF"
+```
+
+**Nota:** El plugin lee la configuración directamente del archivo `config.yaml`. También acepta variables de entorno como respaldo.
 
 ### 5. Reiniciar Hermes
 
 ```bash
-docker compose restart gateway dashboard
-# o si está local:
-hermes gateway run
+hermes gateway restart
 ```
 
 ---
@@ -119,10 +134,10 @@ hermes gateway run
 | `neo4j_user` | Usuario de Neo4j | `neo4j` |
 | `neo4j_password` | **Requerido** — Contraseña de Neo4j | — |
 | `group_id` | Identificador del grafo (para aislar datos) | `default` |
-| `llm_api_key` | API key para LLM (OpenRouter, OpenAI, etc.) | `$OPENROUTER_API_KEY` |
+| `llm_api_key` | API key para LLM (OpenRouter, OpenAI, etc.) | — |
 | `llm_base_url` | Base URL del LLM | `https://openrouter.ai/api/v1` |
 | `llm_model` | Modelo para extracción de entidades | `deepseek/deepseek-v4-flash` |
-| `embed_api_key` | API key para embeddings | `$OPENAI_API_KEY` |
+| `embed_api_key` | API key para embeddings | — |
 | `embed_base_url` | Base URL del servicio de embeddings | `https://api.openai.com/v1` |
 | `embed_model` | Modelo de embeddings | `text-embedding-3-small` |
 
@@ -198,15 +213,63 @@ memory:
 
 ---
 
+## Consultas Cypher para Neo4j Browser
+
+Accede a http://TU_SERVIDOR:7474 para ver el grafo visualmente.
+
+**Ver todos los nodos del group_id actual:**
+```cypher
+MATCH (n)
+WHERE n.group_id = "hermes_test"
+RETURN n
+LIMIT 50
+```
+
+**Ver episodios (conversaciones):**
+```cypher
+MATCH (e:Episodic)
+WHERE e.group_id = "hermes_test"
+RETURN e.name, e.created_at, e.content
+ORDER BY e.created_at DESC
+LIMIT 10
+```
+
+**Ver entidades extraídas:**
+```cypher
+MATCH (n:Entity)
+WHERE n.group_id = "hermes_test"
+RETURN n.name, n.summary
+LIMIT 25
+```
+
+**Ver relaciones conectadas:**
+```cypher
+MATCH (a)-[r:RELATES_TO]->(b)
+WHERE a.group_id = "hermes_test" AND b.group_id = "hermes_test"
+RETURN a.name, r.name, b.name, r.fact
+LIMIT 25
+```
+
+**Ver resumen del grafo:**
+```cypher
+MATCH (n)
+WHERE n.group_id = "hermes_test"
+RETURN labels(n) as Tipo, count(n) as Cantidad
+```
+
+---
+
 ## Estructura del plugin
 
 ```
-graphiti-neo4j/
+graphiti/
 ├── plugin.yaml      # Manifest del plugin
-└── __init__.py      # GraphitiMemoryProvider
+├── __init__.py      # GraphitiMemoryProvider
+├── requirements.txt # Dependencias Python
+└── README.md       # Esta documentación
 ```
 
-Solo 2 archivos. Sin dependencias externas más allá de `graphiti-core` y `neo4j`.
+Solo 4 archivos. Sin dependencias externas más allá de `graphiti-core`, `pyyaml` y `neo4j`.
 
 ---
 
@@ -219,18 +282,32 @@ docker logs neo4j-graphiti
 nc -zv 10.101.10.18 7687
 ```
 
+**Error de autenticación Neo4j:**
+- Verifica usuario y contraseña en `config.yaml`
+- Si Neo4j te bloquea por intentos fallidos: `docker restart neo4j-graphiti`
+
 **Error "api_key client option must be set":**
 - Faltan parámetros en `config.yaml`
-- Verifica que `neo4j_api_key`, `llm_api_key` y `embed_api_key` estén configurados
+- Verifica que `neo4j_password`, `llm_api_key` y `embed_api_key` estén configurados
 
 **El plugin no aparece en `hermes plugins list`:**
-- Verificar que esté en `$HERMES_HOME/plugins/graphiti-neo4j/`
+- Verificar que esté en `$HERMES_HOME/plugins/graphiti/`
 - Verificar que `__init__.py` tenga la función `register(ctx)`
+- Verificar que `kind: exclusive` en `plugin.yaml`
 
 **Error de conexión a Neo4j:**
 - Verifica la URI en `config.yaml` (ej: `bolt://10.101.10.18:7687`)
 - Asegúrate de que el puerto 7687 esté abierto en el servidor
 - Si usas TLS/Aura, usa `neo4j+s://` en lugar de `bolt://`
+
+**Hermes no recuerda nada:**
+- Verifica que `memory.provider: graphiti` esté en `config.yaml`
+- Verifica los logs: `hermes logs | grep -i graphiti`
+- Asegúrate de que `graphiti-core` esté instalado en el venv de Hermes
+
+**Error 403 de OpenRouter (región no soportada):**
+- Cambia a OpenAI directo o LM Studio local
+- O usa un VPN para cambiar tu región aparente
 
 ---
 

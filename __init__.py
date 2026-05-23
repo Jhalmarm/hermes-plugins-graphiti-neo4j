@@ -229,18 +229,13 @@ class GraphitiMemoryProvider(MemoryProvider):
         return "graphiti"
 
     def is_available(self) -> bool:
-        """Return True when graphiti-core is importable and Neo4j API key is present."""
+        """Return True when graphiti-core is importable."""
         try:
             import graphiti_core  # noqa: F401
+            return True
         except Exception:
             logger.debug("graphiti-core is not installed")
             return False
-
-        api_key = os.environ.get("GRAPHITI_NEO4J_API_KEY", "")
-        if not api_key:
-            logger.debug("GRAPHITI_NEO4J_API_KEY not set — graphiti unavailable")
-            return False
-        return True
 
     def get_config_schema(self) -> List[Dict[str, Any]]:
         return [

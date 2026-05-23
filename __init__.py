@@ -323,7 +323,7 @@ class GraphitiMemoryProvider(MemoryProvider):
             return
 
         # group_id scoping — one graph per agent profile or user
-        self._group_id = kwargs.get("agent_identity") or kwargs.get("user_id") or session_id or "default"
+        self._group_id = os.environ.get("GRAPHITI_GROUP_ID") or kwargs.get("agent_identity") or kwargs.get("user_id") or session_id or "default"
         self._session_id = session_id
         logger.info("Graphiti: using group_id=%s", self._group_id)
 

@@ -28,7 +28,19 @@ Long-term memory provider for [Hermes AI Agent](https://github.com/NousResearch/
 - Hermes Agent >= 0.14
 - Neo4j 5.x (Community o Enterprise)
 - Python >= 3.11
-- `graphiti-core` (se instala vía pip/uv)
+- **graphiti-core** (dependencia de Python requerida)
+
+**IMPORTANTE:** Después de clonar el plugin, debes instalar las dependencias en el entorno de Hermes:
+
+```bash
+# En el entorno virtual de Hermes
+pip install -r requirements.txt
+```
+
+Si no usas requirements.txt, instala manualmente:
+```bash
+pip install graphiti-core
+```
 
 ---
 
